@@ -31,10 +31,20 @@ class qa_resampler_ff (gr_unittest.TestCase):
     def tearDown (self):
         self.tb = None
 
-    def test_001_t (self):
+    def test_001_resampler_ff (self):
         # set up fg
-        self.tb.run ()
+        src_data = (-3, 5, 12, 1)
+        expected_result = (0.966, -0.225, 0.9)
+        src = blocks.vector_source_f(src_data)
+        fil = custom_resampler.resampler_ff()
+        dst = blocks.vector_sink_f()
+        self.tb.connect(src, fil)
+        self.tb.connect(fil, dst)
+        self.tb.run()
+
         # check data
+        result_data = dst.data()
+        self.assertFloatTuplesAlmostEqual(expected_result, result_data, 7)
 
 
 if __name__ == '__main__':

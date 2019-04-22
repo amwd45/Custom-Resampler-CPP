@@ -23,10 +23,13 @@
 #endif
 
 #include <gnuradio/io_signature.h>
+#include <gnuradio/math.h>
+#include <vector>
+#include <stdio.h>
 #include "resampler_ff_impl.h"
 
-const int UPSCALE_FACTOR = 24;
-const int DOWNSCALE_FACTOR = 25;
+const int INTERPOLATION = 24;
+const int DECIMATION = 25;
 
 namespace gr {
   namespace custom_resampler {
@@ -55,44 +58,97 @@ namespace gr {
     }
 
     void
-    resampler_ff_impl::forecast (double long noutput_items, gr_vector_int &ninput_items_required)
+    resampler_ff_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
     {
-      ninput_items_required[0] = (noutput_items * (DOWNSCALE_FACTOR - 1) / (UPSCALE_FACTOR - 1)) + 1;
+      ninput_items_required[0] = noutput_items * DECIMATION / INTERPOLATION;
     }
 
-    double long
-    resampler_ff_impl::general_work (double long noutput_items,
+    int
+    resampler_ff_impl::general_work (int noutput_items,
                        gr_vector_int &ninput_items,
                        gr_vector_const_void_star &input_items,
                        gr_vector_void_star &output_items)
     {
+      const double OUT_SAMPLING_RATE = 48000; // 48kHz
+
       const float *in = (const float *) input_items[0];
       float *out = (float *) output_items[0];
-      double long out_index = 0;
+      std::vector<float> samples(ninput_items[0] * (INTERPOLATION + 1));
+      double cutoffFreq = 18000; // center frequency
+      //long out_index = 0;
 
-      // Upsample
-      for(double long up = 0; up < ninput_items; up++)
+
+      // Interpolation
+      for(int up = 0; up < ninput_items[0]; up++)
       {
-        out[out_index] = in[up];
+        //samples.push_back(in[up]);
+        samples[up * (INTERPOLATION + 1)] = in[up];
 
-        for(int scale_index = 1; scale_index < UPSCALE_FACTOR; scale_index++)
-          out[out_index + scale_index] = 0;
+        for(int scale_index = 1; scale_index < INTERPOLATION; scale_index++)
+          samples[up * (INTERPOLATION + 1) + scale_index] = 0;
+          //samples.push_back(0);
         
-        out_index += UPSCALE_FACTOR;
+        //out_index += INTERPOLATION;
       }
 
-      // Low-Pass Filter
-      
+      samples.shrink_to_fit();
 
-      // Downsample
-      for(double long down = 0; down < ((UPSCALE_FACTOR - 1) * ninput_items) - noutput_items; down++)
+
+
+      // Compute Taps
+      int ntaps = 15; // set to 15 for now, may need to write code to calculate later
+      std::vector<float> taps(ntaps);
+
+      int M = (ntaps - 1) / 2;
+      double fwT0 = 2 * M_2_PI * cutoffFreq / OUT_SAMPLING_RATE;
+
+      for(int n = -M; n <= M; n++)
       {
-        // delete out[DOWNSCALE_FACTOR * down]
+        if(n == 0)
+          taps[n+M] = fwT0 / M_2_PI;
+
+        else
+        {
+          taps[n+M] = sin(n * fwT0) / (n * M_2_PI);
+        }
       }
+
+
+
+      // Filter
+      std::vector<float> f_samples(samples.size());
+
+      for(int f_index = 0; f_index < samples.size(); f_index++)
+      {
+        //f_samples[f_index] = 0;
+
+        for(int t_index = 0; t_index < ntaps; t_index++)
+        {
+          if(f_index >= t_index)
+            f_samples[f_index] += taps[t_index] * samples[f_index - t_index];
+        }
+      }
+
+
+
+      // Decimation
+      for(int down = 0; down < noutput_items; down++)
+      {
+        out[down] = f_samples[DECIMATION * down];
+      }
+
+      //samples.shrink_to_fit();
+
+/*
+      // Copy Contents to Output
+      for(int copy = 0; copy < noutput_items; copy++)
+        out[copy] = f_samples[copy];*/
+
+
 
       // Tell runtime system how many input items we consumed on
       // each input stream.
-      consume_each (noutput_items);
+      consume_each (ninput_items[0]);
 
       // Tell runtime system how many output items we produced.
       return noutput_items;
