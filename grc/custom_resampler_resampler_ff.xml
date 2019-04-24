@@ -1,0 +1,15 @@
+<block>
+  <name>Resampler ff</name>
+  <key>custom_resampler_resampler_ff</key>
+  <category>[CUSTOM_RESAMPLER]</category>
+  <import>import custom_resampler</import>
+  <make>custom_resampler.resampler_ff()</make>
+  <sink>
+    <name>in</name>
+    <type>float</type>
+  </sink>
+  <source>
+    <name>out</name>
+    <type>float</type>
+  </source>
+</block>
