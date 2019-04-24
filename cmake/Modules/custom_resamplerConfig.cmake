@@ -1,0 +1,30 @@
+INCLUDE(FindPkgConfig)
+PKG_CHECK_MODULES(PC_CUSTOM_RESAMPLER custom_resampler)
+
+FIND_PATH(
+    CUSTOM_RESAMPLER_INCLUDE_DIRS
+    NAMES custom_resampler/api.h
+    HINTS $ENV{CUSTOM_RESAMPLER_DIR}/include
+        ${PC_CUSTOM_RESAMPLER_INCLUDEDIR}
+    PATHS ${CMAKE_INSTALL_PREFIX}/include
+          /usr/local/include
+          /usr/include
+)
+
+FIND_LIBRARY(
+    CUSTOM_RESAMPLER_LIBRARIES
+    NAMES gnuradio-custom_resampler
+    HINTS $ENV{CUSTOM_RESAMPLER_DIR}/lib
+        ${PC_CUSTOM_RESAMPLER_LIBDIR}
+    PATHS ${CMAKE_INSTALL_PREFIX}/lib
+          ${CMAKE_INSTALL_PREFIX}/lib64
+          /usr/local/lib
+          /usr/local/lib64
+          /usr/lib
+          /usr/lib64
+)
+
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(CUSTOM_RESAMPLER DEFAULT_MSG CUSTOM_RESAMPLER_LIBRARIES CUSTOM_RESAMPLER_INCLUDE_DIRS)
+MARK_AS_ADVANCED(CUSTOM_RESAMPLER_LIBRARIES CUSTOM_RESAMPLER_INCLUDE_DIRS)
+
